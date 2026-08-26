@@ -1,0 +1,354 @@
+{
+  "name": "CLEANPRO DISTRIBUCIONES SA",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -128,
+        -48
+      ],
+      "id": "2191ace6-f219-4b76-9622-e8fe0a19fb8b",
+      "name": "When chat message received",
+      "webhookId": "bd1db6a0-541d-47e5-b35f-4433a2e89e1e"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "[ROL]\nEres el Recepcionista Digital de Cleanpro Distribuciones S.A., empresa mayorista de limpieza institucional.\n\n[ÁMBITO]\nTu área de incumbencia se limita exclusivamente a la recepción, clasificación y derivación operativa de consultas de clientes institucionales referidas a Logística/Depósito, Ventas Mayoristas y Administración Financiera. No tienes competencias fuera de este perímetro: no asesoras sobre productos, no cotizas precios, no gestionas reclamos por tu cuenta.\n\n[TONO DE COMUNICACIÓN]\nSé extremadamente breve, cordial y profesional. Usá lenguaje neutro estándar del español; está prohibido el uso de fórmulas de lenguaje inclusivo (ej. \"todos y todas\", \"o/a\").\n\n[OBJETIVO]\nLeer el mensaje entrante, comprender la intención, clasificarla en una categoría y derivarla usando la herramienta de Slack. Confirmar al cliente que su solicitud fue derivada.\n\n[REGLAS DE DERIVACIÓN ESTRICTAS]\n- DEPÓSITO: roturas, demoras, camiones, estado de envío, faltantes.\n- VENTAS MAYORISTAS: compras por volumen, precios mayoristas, catálogo, nuevos clientes.\n- ADMINISTRACIÓN: facturas, pagos, impuestos, comprobantes, proveedores.\n\n[MANEJO DE AMBIGÜEDAD]\nSi el mensaje mezcla categorías o no es claro, tenés PROHIBIDO adivinar. Pedí un dato adicional antes de derivar (ej. \"¿Es un tema de envíos/faltantes o de facturación?\").\n\n[ESCALAMIENTO HUMANO]\nDerivá de inmediato con la categoría ESCALAMIENTO HUMANO cuando: el cliente pida explícitamente hablar con una persona; el mensaje exprese enojo, urgencia crítica o riesgo (ej. corte total de suministro, amenaza legal); tras pedir una aclaración el cliente siga sin poder definir su categoría; o la herramienta de Slack falle. Notificá igual por Slack marcando la categoría ESCALAMIENTO HUMANO y respondé: \"Su consulta requiere atención personalizada; un responsable de Cleanpro se comunicará a la brevedad.\"\n\n[MANEJO DE ERRORES DE HERRAMIENTA]\nSi la herramienta de Slack no responde o falla, no la reintentes más de una vez. Informá al cliente que hubo un inconveniente técnico y que su solicitud quedará registrada para seguimiento humano. Nunca afirmes que la derivación fue exitosa si no lo fue.\n\n[PROHIBICIONES]\nTenés TERMINANTEMENTE PROHIBIDO inventar precios, asesorar sobre productos, prometer fechas de entrega o intentar resolver el problema por tu cuenta. Solo clasificás y derivás.\n\n[FORMATO DE RESPUESTA FINAL]\nUna vez identificado el departamento, devolvé como respuesta final la categoría en mayúsculas seguida de una confirmación breve. Ejemplo: \"DEPÓSITO. Su solicitud ha sido derivada al área correspondiente.\"",
+          "maxIterations": 5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        176,
+        -48
+      ],
+      "id": "7711bc8f-efe3-4c58-95cd-294accb21c7f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "responseFormat": "text",
+          "temperature": 0,
+          "maxRetries": 5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        160,
+        144
+      ],
+      "id": "de43c59a-29bd-4702-afdf-106cb3e479af",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "D04cbAT65vwNxnXw",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Send a message in Slack Herramienta de derivación operativa hacia el equipo humano de Cleanpro por Slack. Usala ÚNICA Y EXCLUSIVAMENTE después de haber clasificado la consulta en una de estas categorías: DEPOSITO, VENTAS MAYORISTAS, ADMINISTRACION o ESCALAMIENTO HUMANO. No la uses para saludos, conversación general ni preguntas fuera de tu ámbito. Datos requeridos antes de invocarla: categoria (una de las cuatro válidas), resumen_solicitud (una línea con el pedido del cliente) y contacto_cliente (dato de contacto si lo mencionó, o 'N/A' si no). Si la herramienta devuelve un error o no confirma el envío, no la reintentes más de una vez: informá al cliente que hubo un inconveniente técnico y que su solicitud quedará registrada para seguimiento humano.",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPLKPE56V",
+          "mode": "id"
+        },
+        "text": "=🚨 NUEVA CONSULTA DERIVADA - CLEANPRO 🚨\n📂 Categoría: {{ $fromAI('categoria', 'Categoría asignada: DEPOSITO, VENTAS MAYORISTAS, ADMINISTRACION o ESCALAMIENTO HUMANO', 'string') }}\n📝 Resumen: {{ $fromAI('resumen_solicitud', 'Resumen breve del pedido del cliente en una linea', 'string') }}\n📞 Contacto informado: {{ $fromAI('contacto_cliente', 'Dato de contacto del cliente si lo menciono, si no hay usar N/A', 'string') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slackTool",
+      "typeVersion": 2.5,
+      "position": [
+        336,
+        160
+      ],
+      "id": "6583a759-7ae5-4c5d-bedd-38c2fd49ebc3",
+      "name": "Send a message in Slack",
+      "webhookId": "fb5e032c-1811-429f-8f95-39cbeaadcd48",
+      "credentials": {
+        "slackApi": {
+          "id": "lWHg0n17MZfyc4lB",
+          "name": "Slack account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0d91fa4f-fa76-4664-a4e8-c34313a99b6b",
+              "name": "fecha_hora",
+              "value": "={{ $now.format('dd/MM/yyyy HH:mm:ss') }}",
+              "type": "string"
+            },
+            {
+              "id": "bf72b736-0565-4880-8993-0c555dbc7978",
+              "name": "sesion",
+              "value": "={{ $('When chat message received').item.json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "802b65a0-9412-4663-ab0d-0129c516ac0e",
+              "name": "solicitud",
+              "value": "={{ $('When chat message received').item.json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "949c2d6f-d889-4fc0-9096-038789e68dfc",
+              "name": "categoria",
+              "value": "={{ $json.output.split('.')[0].trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "91361a06-65b5-41ed-9c6e-d97ccf31fd0f",
+              "name": "herramienta_utilizada",
+              "value": "Slack (Send a message)",
+              "type": "string"
+            },
+            {
+              "id": "0e480071-1989-481a-8b52-c763bd5e2511",
+              "name": "resultado",
+              "value": "Derivación completada correctamente",
+              "type": "string"
+            },
+            {
+              "id": "f1b96a4d-cdc9-4217-b0ed-63d4cdf5f237",
+              "name": "respuesta_final",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "2a518872-049d-4b18-a88e-9c664894647c",
+              "name": "estado",
+              "value": "COMPLETADO",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        -48
+      ],
+      "id": "68dfe08b-955e-4479-b2c0-3b4b30c133f4",
+      "name": "Set-Preparar Log exito"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "68766be6-9626-4c7f-981c-875a671db2c6",
+              "name": "fecha_hora",
+              "value": "={{ $now.format('dd/MM/yyyy HH:mm:ss') }}\n",
+              "type": "string"
+            },
+            {
+              "id": "9d1ab116-25e1-4e63-be5e-7ad24327bbe8",
+              "name": "sesion",
+              "value": "={{ $('When chat message received').item.json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "c56ab767-4ae5-4a6e-8bf5-b2494579d275",
+              "name": "solicitud",
+              "value": "={{ $('When chat message received').item.json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "67e2fd6c-023a-4d07-8e8e-b8fc04c80b53",
+              "name": "categoria",
+              "value": "N/A - Fallo del Agente",
+              "type": "string"
+            },
+            {
+              "id": "45b3f3b4-0b0f-4187-920b-f64fb3a89f91",
+              "name": "herramienta_utilizada",
+              "value": "N/A",
+              "type": "string"
+            },
+            {
+              "id": "32ebc4ee-92a8-412c-94fd-6feb126c3c2f",
+              "name": "resultado",
+              "value": "={{ $json.error?.message || 'Error desconocido en el AI Agent' }}",
+              "type": "string"
+            },
+            {
+              "id": "847e6508-2153-4372-b66f-eadf74a7a31b",
+              "name": "respuesta_final",
+              "value": "El agente no pudo completar la derivación automáticamente. Requiere revisión humana.",
+              "type": "string"
+            },
+            {
+              "id": "b82f0722-4bcc-4b4a-885d-c87090095345",
+              "name": "estado",
+              "value": "ERROR",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        160
+      ],
+      "id": "963c284b-97d8-4366-90ab-4cb0d0a0044c",
+      "name": "Set - Preparar Log Error"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPLKPE56V",
+          "mode": "id"
+        },
+        "text": "==📋 LOG DE EJECUCIÓN - CLEANPRO\n🕒 Fecha y hora: {{ $json.fecha_hora }}\n🆔 Sesión: {{ $json.sesion }}\n💬 Solicitud original: {{ $json.solicitud }}\n📂 Categoría: {{ $json.categoria }}\n🛠️ Herramienta utilizada: {{ $json.herramienta_utilizada }}\n✅ Resultado: {{ $json.resultado }}\n🗣️ Respuesta final al cliente: {{ $json.respuesta_final }}\n📊 Estado: {{ $json.estado }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.5,
+      "position": [
+        752,
+        48
+      ],
+      "id": "54fc53e1-2e4f-4206-913e-c1aedfc1517d",
+      "name": "Send a message",
+      "webhookId": "7e189a42-937f-4b29-8363-6fe6aa9c5099",
+      "credentials": {
+        "slackApi": {
+          "id": "lWHg0n17MZfyc4lB",
+          "name": "Slack account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "RECEPCIONISTA DIGITAL\nEl Bot arranca cuando el cliente escribe al chat.\nLa inteligencia artificial lee el mensaje y lo clasifica segun lo que pide el cliente.\nSi todo sale bien, un nodo prepara un registro con los datos de la charla y el resultado.\nSi hay algun problema o error tecnico, el sistema guarda un reporte de falla.\nAl final, todo ese resumen se envia automaticamente a un canal de salck para que el equipo pueda auditarlo.",
+        "height": 384,
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -528,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "7a86ad91-ab83-43d8-be7f-65ae78fef08c",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Slack": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Set-Preparar Log exito",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set - Preparar Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Preparar Log Error": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set-Preparar Log exito": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3607789e-c70b-4200-a9ad-256ee5fb1b7a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8a894ab1bcd0140b298faae458ba471b33e8cc32e3624ab66fca563750594439"
+  },
+  "nodeGroups": [],
+  "id": "e8JJezOX94JGF7nd",
+  "tags": []
+}
