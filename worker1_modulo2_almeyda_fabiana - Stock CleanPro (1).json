@@ -1,0 +1,270 @@
+{
+  "name": "worker1_modulo2_almeyda_fabiana - Stock CleanPro",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "producto"
+            },
+            {
+              "name": "cliente_id"
+            }
+          ]
+        }
+      },
+      "id": "6a744ebb-eb41-45b0-b731-285998e62fca",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1XfSJDDESrdE0KbE514aAg3AdAJaisG4_tNiFc6IJlH8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "catalogo",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "6673a617-0648-4aaa-843c-664a7293e27b",
+      "name": "Google Sheets - Buscar Producto",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -480,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "kiuLiGPUa6ercTh6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-existe",
+              "leftValue": "={{ $json.producto }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d3f17fb7-54f8-42a9-a2f3-0c32116523c0",
+      "name": "IF - Producto encontrado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "status",
+              "type": "string",
+              "value": "success"
+            },
+            {
+              "id": "s2",
+              "name": "data.producto",
+              "type": "string",
+              "value": "={{ $json.producto }}"
+            },
+            {
+              "id": "s3",
+              "name": "data.stock_disponible",
+              "type": "number",
+              "value": "={{ $json.stock_disponible }}"
+            },
+            {
+              "id": "s4",
+              "name": "data.precio_lista",
+              "type": "string",
+              "value": "={{ $json.precio_lista }}"
+            },
+            {
+              "id": "s5",
+              "name": "data.unidad",
+              "type": "string",
+              "value": "={{ $json.unidad }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4c38637f-ffc4-475b-b5d5-3ce358cb02cd",
+      "name": "Set - Respuesta Exitosa (JSON contrato)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "status",
+              "type": "string",
+              "value": "error"
+            },
+            {
+              "id": "e2",
+              "name": "data.motivo",
+              "type": "string",
+              "value": "producto_no_encontrado"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e0c98af0-88aa-44fe-9262-1ce1fd601305",
+      "name": "Set - Respuesta Contingencia",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        224
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        192,
+        96
+      ],
+      "id": "87eceada-b25c-47ad-8606-03d3e7655b50",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "content": "WORKER 1: Consulta de inventario CLEANPRO.\n* Proposito: Conecta de forma segura con Google Sheets mediante OAuth2 para extraer el catalogo de productos y stock disponible.\n*Logica: Evalua mediante un nodo condicional (IF) si el inventario responde correctamente; procesa una respuesta exitosa estructurada bajo contrato JSON o activa una rama de contingencia en caso de errores.\n*Salida: Unifica los datos mediante un nodo Merge para entregar un formato uniforme listo para ser consumido por el agente de IA o el Bot Telegram.\n",
+        "height": 224,
+        "width": 544
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -640,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "107f11a6-5cce-4ddc-bcfd-8196aa5b30e6",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Buscar Producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Buscar Producto": {
+      "main": [
+        [
+          {
+            "node": "IF - Producto encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Producto encontrado": {
+      "main": [
+        [
+          {
+            "node": "Set - Respuesta Exitosa (JSON contrato)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Respuesta Contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Respuesta Exitosa (JSON contrato)": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Respuesta Contingencia": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c1933f6d-d1f8-4fe0-b04e-7d8cc54739cb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8a894ab1bcd0140b298faae458ba471b33e8cc32e3624ab66fca563750594439"
+  },
+  "nodeGroups": [],
+  "id": "rt8xm5EJMwgRoFcc",
+  "tags": []
+}

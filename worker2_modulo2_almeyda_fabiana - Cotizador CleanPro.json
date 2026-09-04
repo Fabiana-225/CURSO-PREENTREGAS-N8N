@@ -1,0 +1,123 @@
+{
+  "name": "worker2_modulo2_almeyda_fabiana - Cotizador CleanPro",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "cliente_id"
+            },
+            {
+              "name": "items",
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "id": "17054164-270e-4f7b-b310-bc184571c1c7",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lógica robusta de cotización para CleanPro\nconst rawItems = $input.first().json.items || [];\nconst clienteId = $input.first().json.cliente_id;\n\n// Catálogo de precios de referencia sincronizado con Google Sheets\nconst preciosBase = {\n  'desengrasante industrial 20l': 25400,\n  'papel institucional x12': 8200,\n  'detergente concentrado 5l': 6100,\n  'bolsas residuo 120l (x50)': 9700,\n  'alcohol en gel 5l': 11300,\n  'lavandina industrial 10l': 7500,\n  'guantes de nitrilo (caja x100)': 15800\n};\n\nlet subtotal = 0;\nconst detalle = [];\nlet itemsInvalidos = 0;\n\nfor (const item of rawItems) {\n  // Normalizamos el nombre del producto recibido (minúsculas y sin espacios extra) para asegurar el match\n  const productoLimpio = (item.producto || '').trim().toLowerCase();\n  const precioUnit = preciosBase[productoLimpio] || 0;\n  \n  // Validamos que la cantidad sea un número válido y mayor a 0\n  const cantidad = Number(item.cantidad);\n  \n  if (precioUnit > 0 && !isNaN(cantidad) && cantidad > 0) {\n    const totalItem = precioUnit * cantidad;\n    subtotal += totalItem;\n    detalle.push({ \n      producto: item.producto, \n      cantidad: cantidad, \n      precio_unitario: precioUnit,\n      subtotal: totalItem \n    });\n  } else {\n    itemsInvalidos++;\n  }\n}\n\n// Si no se pudo procesar ningún ítem correctamente, devolvemos un estado de error controlado\nif (detalle.length === 0) {\n  return [{\n    json: {\n      status: 'error',\n      data: {\n        mensaje: 'No se pudieron reconocer los productos o las cantidades solicitadas en el catálogo.'\n      }\n    }\n  }];\n}\n\n// Regla de descuento por volumen (determinista)\nlet descuentoPct = 0;\nif (subtotal >= 250000) descuentoPct = 0.08;\nelse if (subtotal >= 100000) descuentoPct = 0.05;\n\nconst totalFinal = subtotal * (1 - descuentoPct);\nconst cotizacionId = 'COT-2026-' + Math.floor(1000 + Math.random() * 9000);\n\nconst borrador = `Estimado cliente (${clienteId}), adjuntamos el detalle de su cotización ${cotizacionId}. Total estimado: ARS ${totalFinal.toLocaleString('es-AR')}. Descuento aplicado: ${(descuentoPct*100).toFixed(0)}% por compra mayorista.`;\n\nreturn [{\n  json: {\n    status: 'success',\n    data: {\n      cotizacion_id: cotizacionId,\n      total_estimado: 'ARS ' + totalFinal.toLocaleString('es-AR'),\n      descuento_aplicado: (descuentoPct*100).toFixed(0) + '% (compra mayorista)',\n      detalle_items: detalle,\n      borrador_email: borrador\n    }\n  }\n}];"
+      },
+      "id": "6f229a10-2d2a-4114-adca-4177defca6f7",
+      "name": "Code - Calcular Cotización",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "status",
+              "type": "string",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "id": "c2",
+              "name": "data",
+              "type": "object",
+              "value": "={{ $json.data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9b2b1ad4-035e-42d4-948b-e308ce1e1de8",
+      "name": "Set - Respuesta Final (JSON contrato)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "WORKER 2: Cotizador automatico (CLEANPRO)\n*Objetivo: Calcula de forma determinista y sin costo de IA los presupuestos de los clientes a partir de los items y cantidades solicitadas .JSON.\n*Proceso: Recibe los datos mediante un bloque de codigos JavaScript, calcula subtotales basados en precios de referencia y aplica automaticamente descuentosmayorista a partir de determinado monto.\n*Salida: Genera un identificador de cotizacion unico, redacta un borrador de email automatizado y empaqueta el resultado.\n",
+        "height": 400,
+        "width": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -432,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "2c597656-3539-48d4-a03b-88c6661c6896",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code - Calcular Cotización",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Calcular Cotización": {
+      "main": [
+        [
+          {
+            "node": "Set - Respuesta Final (JSON contrato)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9e53d1da-2a15-4ac3-a4af-e320084a30d0",
+  "meta": {
+    "instanceId": "8a894ab1bcd0140b298faae458ba471b33e8cc32e3624ab66fca563750594439"
+  },
+  "nodeGroups": [],
+  "id": "zZKItfAcS6hDse5K",
+  "tags": []
+}
