@@ -15,3 +15,12 @@ El agente de IA está configurado para:
 * Manager (Recepcionista Digital): Agente de IA central que clasifica la intención del cliente en una taxonomía cerrada (CONSULTA_STOCK, COTIZACION, RECLAMO, FUERA_DE_ALCANCE) mediante un nodo Switch de rutas deterministas.
 * Worker 1 (Stock): Subflujo independiente que consulta disponibilidad y precios directamente desde Google Sheets, retornando un contrato JSON estandarizado.
 * Worker 2 (Cotizador): Módulo determinista de cálculo de presupuestos (con lógica en JavaScript de costo cero en tokens), encargado de computar subtotales, aplicar descuentos automáticos por volumen y generar borradores de email.  Observabilidad y Trazabilidad: Consolidación de todas las ramas de negocio mediante un nodo Merge para el registro automático de logs operativos en tiempo real en Slack (#logs-cleanpro).  
+
+## Pre-Entrega 3 (Módulo 3): Memoria Persistente y Resumen Automático
+
+En esta iteración, el sistema evolucionó para incorporar memoria a largo plazo y optimización de contexto, resolviendo el problema de la amnesia entre ejecuciones:
+
+* **Persistencia Híbrida en Airtable:** Implementación de un circuito de lectura y escritura (upsert) para guardar el estado del caso y consultar el historial del cliente mediante un `Session_ID` único.
+* **Capa de Summarization:** Creación de una ruta condicional que se activa automáticamente al superar los 5 intercambios de mensajes. Utiliza el modelo `gpt-4o-mini` con un prompt estricto para comprimir el historial en un JSON estructurado (Asunto Principal, Puntos Clave, Acción Requerida).
+* **Inyección de Contexto (Context Engineering):** El Manager Agent recibe el resumen consolidado entre delimitadores rígidos de protección en su System Prompt, lo que le permite retomar conversaciones de clientes recurrentes optimizando el consumo de tokens.
+* **Archivo de este hito:** `manager_modulo3_almeyda_fabiana.json`
