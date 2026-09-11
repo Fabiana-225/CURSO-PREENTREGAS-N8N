@@ -1,0 +1,551 @@
+{
+  "name": "CleanPro · Checkpoint 4 - Integraciones Avanzadas (CRM + Gmail + Slack)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🧩 CleanPro Distribuciones S.A. — Checkpoint 4\n\nSe extiende el Manager del Módulo 3 (memoria híbrida en Airtable) con un nuevo canal real de entrada: la casilla de soporte de CleanPro.\n\n**Los 4 nodos clave que evalúa la rúbrica:**\n① IF anti auto-reply — corta el bucle infinito\n② Look up en HubSpot — evita el Error 409 (duplicados)\n③ Create Draft en Gmail — guardrail Human-in-the-loop\n④ Set de limpieza — evita el Error 400 (payload mal formado)\n\n**Scopes mínimo privilegio:**\n- HubSpot: crm.objects.contacts.read / crm.objects.contacts.write (sin deals, sin tickets)\n- Gmail: gmail.compose (jamás gmail.send)\n- Slack: chat:write acotado al canal #logs-cleanpro-agente\n\n**Corrección M4:** el ID de canal de Slack (abierto desde M1 como placeholder C0LOGSCLEANPRO) queda resuelto: reemplazar 'SLACK_CHANNEL_ID_REAL' por el ID real que devuelve el selector nativo de n8n al autenticar el workspace de CleanPro.",
+        "height": 420,
+        "width": 620,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        -288
+      ],
+      "id": "b84f2185-2408-41cf-879e-955594ac12ca",
+      "name": "📚 Overview · Checkpoint 4 CleanPro"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.Subject }}",
+              "rightValue": "(?i)(auto-reply|out of office|undeliverable|respuesta automática|ausente)",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "7d134573-cb65-4b6a-9150-3430d2bc8912"
+            },
+            {
+              "leftValue": "={{ $json.From }}",
+              "rightValue": "(?i)no-reply@|noreply@",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "bba3a69a-2189-48ae-9174-76db78fab763"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        176,
+        240
+      ],
+      "id": "da87a757-6052-4579-bb9c-a2054640a35a",
+      "name": "① IF · ¿Es Auto-Reply?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        576,
+        64
+      ],
+      "id": "c658cf18-fd3d-48ff-a4e5-6b9704757d84",
+      "name": "🛑 Corta el bucle (auto-reply detectado)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Asunto: {{ $json.Subject }}\nDe: {{ $json.From }}\nCuerpo:{{ $json.text || $json.textPlain || $json.snippet }}",
+        "options": {
+          "systemMessage": "Sos el agente de soporte de CleanPro Distribuciones S.A. (venta mayorista/minorista de productos de limpieza institucional, Paraná, Entre Ríos). Clasificá el correo en una de estas categorías cerradas: CONSULTA_STOCK, COTIZACION, RECLAMO, OTRO. Redactá una respuesta breve, profesional, en tono institucional (navy #1B2A4A / verde #2E7D32 como identidad de marca, no como color de texto). Si el correo pide precio o disponibilidad, indicá que un asesor comercial confirmará el detalle exacto — NUNCA inventes precios ni stock. Devolvé SIEMPRE un JSON: {\"categoria\": string, \"respuesta_sugerida\": string, \"cliente_email\": string, \"cliente_nombre\": string}",
+          "maxIterations": 4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        464,
+        304
+      ],
+      "id": "73dfcd95-4887-4106-8868-eecf035a6476",
+      "name": "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "cliente_email",
+              "value": "={{ JSON.parse($json.output).cliente_email }}",
+              "type": "string",
+              "id": "225a22d3-8bd6-45f5-af5d-c3e930f03cea"
+            },
+            {
+              "name": "cliente_nombre",
+              "value": "={{ $json.output.cliente_nombre || 'Cliente CleanPro' }}",
+              "type": "string",
+              "id": "50be3c4d-61bd-44fa-8620-28c92d693d30"
+            },
+            {
+              "name": "categoria",
+              "value": "={{ JSON.parse($json.output).categoria }}",
+              "type": "string",
+              "id": "5064f415-9182-47c4-b351-72f6d025ac8f"
+            },
+            {
+              "name": "respuesta_sugerida",
+              "value": "={{ JSON.parse($json.output).respuesta_sugerida }}",
+              "type": "string",
+              "id": "a00674b8-3143-43eb-913a-9e2fa16d6d74"
+            },
+            {
+              "name": "payload_valido",
+              "value": "={{ !!JSON.parse($json.output).cliente_email && JSON.parse($json.output).cliente_email.includes('@') }}",
+              "type": "boolean",
+              "id": "36eb8367-41b4-4a87-97fc-35bc5f08ca53"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        304
+      ],
+      "id": "9d6654f3-2179-4ac3-a9d1-465180bde063",
+      "name": "④ Set · Limpieza y Validación de Payload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.payload_valido }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "a7d28839-1e1a-466b-9f9b-61bfc0ffcebd"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        304
+      ],
+      "id": "7d87eef5-6bcb-4186-a88d-18b5f7e1d4bd",
+      "name": "IF · Payload válido (anti Error 400)"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "email",
+                    "value": "={{ $json.cliente_email }}"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        208
+      ],
+      "id": "0c13a7d4-fabe-40e8-845a-f4c041180cd3",
+      "name": "② Look Up · Buscar Contacto en CRM (anti 409)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.total }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "id": "5a5de633-b39a-4cf5-935e-e2eafc4bc900"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        208
+      ],
+      "id": "83ea9155-aea2-4cd6-99ad-2bd6c7477386",
+      "name": "IF · ¿Contacto ya existe?"
+    },
+    {
+      "parameters": {
+        "operation": "update"
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        128
+      ],
+      "id": "5cac4817-4ab7-400b-8bae-58eb2eceec12",
+      "name": "HubSpot · Update Contacto"
+    },
+    {
+      "parameters": {
+        "operation": "create"
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        336
+      ],
+      "id": "44039592-0f62-4e3d-9248-dfd8a215eae3",
+      "name": "HubSpot · Create Contacto (nuevo)"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: consulta - CleanPro Distribuciones",
+        "message": "={{ $('Set · Limpieza y Validación de Payload').item.json.respuesta_sugerida }}",
+        "options": {
+          "sendTo": "={{ $('Set · Limpieza y Validación de Payload').item.json.cliente_email }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1776,
+        192
+      ],
+      "id": "2b2f6bb9-9e5b-4775-b01d-4ada5dedf511",
+      "name": "③ Create Draft · Respuesta para Aprobación (HITL)",
+      "webhookId": "d4b4fca0-3700-4862-8b24-15f684463665",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NdCahO98KpySuCFj",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Guardrail HITL obligatorio: jamás se usa la operación 'send'. Un asesor comercial de CleanPro revisa y envía manualmente desde Gmail."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "resumen_slack",
+              "value": "=📧 *{{ $json.categoria }}* de {{ $json.cliente_nombre }} ({{ $json.cliente_email }}) → borrador creado en Gmail, pendiente de aprobación.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1984,
+        192
+      ],
+      "id": "15d22d14-6a71-4a6d-ade8-b4d5da1fa66d",
+      "name": "Set · Resumen limpio para Slack (sin payload pesado)"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BPLKPE56V",
+          "mode": "id"
+        },
+        "text": "={{ $json.resumen_slack }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        192
+      ],
+      "id": "c06ba81a-1af5-4f95-93ac-ed4dae6cb691",
+      "name": "📣 Notificación · #logs-cleanpro-agente",
+      "webhookId": "e836cd75-66ea-48c0-ae7d-37937941d6b1",
+      "credentials": {
+        "slackApi": {
+          "id": "lWHg0n17MZfyc4lB",
+          "name": "Slack account 5"
+        }
+      },
+      "notes": "CORRECCIÓN M4: ID real del canal reemplaza el placeholder C0LOGSCLEANPRO abierto desde el Módulo 1."
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        496
+      ],
+      "id": "ebd645c3-b53a-414d-b544-968ce887842e",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "D04cbAT65vwNxnXw",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        240
+      ],
+      "id": "be4f1868-fcc9-45f1-905a-be3330cb496d",
+      "name": "Casilla Soporte Clean Pro",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NdCahO98KpySuCFj",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "① IF · ¿Es Auto-Reply?": {
+      "main": [
+        [
+          {
+            "node": "🛑 Corta el bucle (auto-reply detectado)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)": {
+      "main": [
+        [
+          {
+            "node": "④ Set · Limpieza y Validación de Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "④ Set · Limpieza y Validación de Payload": {
+      "main": [
+        [
+          {
+            "node": "IF · Payload válido (anti Error 400)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF · Payload válido (anti Error 400)": {
+      "main": [
+        [
+          {
+            "node": "② Look Up · Buscar Contacto en CRM (anti 409)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "② Look Up · Buscar Contacto en CRM (anti 409)": {
+      "main": [
+        [
+          {
+            "node": "IF · ¿Contacto ya existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF · ¿Contacto ya existe?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot · Update Contacto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HubSpot · Create Contacto (nuevo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot · Update Contacto": {
+      "main": [
+        [
+          {
+            "node": "③ Create Draft · Respuesta para Aprobación (HITL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot · Create Contacto (nuevo)": {
+      "main": [
+        [
+          {
+            "node": "③ Create Draft · Respuesta para Aprobación (HITL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "③ Create Draft · Respuesta para Aprobación (HITL)": {
+      "main": [
+        [
+          {
+            "node": "Set · Resumen limpio para Slack (sin payload pesado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set · Resumen limpio para Slack (sin payload pesado)": {
+      "main": [
+        [
+          {
+            "node": "📣 Notificación · #logs-cleanpro-agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Casilla Soporte Clean Pro": {
+      "main": [
+        [
+          {
+            "node": "① IF · ¿Es Auto-Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "98022a4a-00f0-48b9-bfc7-79625e2d16b4",
+  "meta": {
+    "instanceId": "8a894ab1bcd0140b298faae458ba471b33e8cc32e3624ab66fca563750594439"
+  },
+  "nodeGroups": [],
+  "id": "DFRMV6ehTYF0bZa9",
+  "tags": []
+}
