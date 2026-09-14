@@ -27,12 +27,15 @@ En esta iteración, el sistema evolucionó para incorporar memoria a largo plazo
 * **Inyección de Contexto (Context Engineering):** El Manager Agent recibe el resumen consolidado entre delimitadores rígidos de protección en su System Prompt, lo que le permite retomar conversaciones de clientes recurrentes optimizando el consumo de tokens.
 * **Archivo de este hito:** `manager_modulo3_almeyda_fabiana.json`
 
-## Pre-Entrega 4 (Módulo 4): Integraciones Avanzadas e Interconexión de Sistemas
+## Pre-Entrega 4 (Módulo 4): Integraciones Avanzadas e Interconexión de Sistemas (Arquitectura Manager-Worker M3)
 
-En este hito se extiende el ecosistema agéntico para conectarlo con herramientas reales del negocio (CRM, Gmail y Slack) bajo protocolos seguros OAuth2 y principios estrictos de gobernanza:
+En este hito se extiende el ecosistema agéntico para conectarlo con herramientas reales del negocio (CRM HubSpot, Gmail y Slack) bajo protocolos seguros y principios estrictos de gobernanza, integrándose de forma síncrona con el Manager y la memoria del Módulo 3:
 
-* **Filtro Anti Auto-Reply:** Nodo IF determinista con expresiones regulares para descartar correos automáticos (*Auto-reply, Out of office, Undeliverable, no-reply@*), neutralizando bucles infinitos.
-* **Look Up en HubSpot (Anti Error 409):** Búsqueda previa de contactos por correo electrónico antes de ejecutar la acción de creación, evitando duplicados en la base de datos de ventas de CleanPro.
-* **Create Draft en Gmail (Human-in-the-Loop):** Configuración estricta de seguridad bajo el principio de mínimo privilegio (`gmail.compose`), asegurando que ningún correo salga de forma autónoma sin la aprobación y revisión humana.
-* **Limpieza de Payload (Anti Error 400):** Nodos intermedios (`Set`) para validar y limpiar objetos pesados o vacíos antes de notificar al canal de operaciones.
-* **Archivo de este hito:** `checkpoint4_almeyda_fabiana.json`
+- **Continuidad Modular (`Execute Workflow`):** El workflow actúa como puerta de entrada y brazo ejecutor, delegando el razonamiento y la persistencia de Airtable al Manager del Módulo 3, resolviendo la deuda de flujo independiente.
+- **Filtro Anti Auto-Reply:** Nodo `IF` determinista con expresiones regulares robustas para descartar correos automáticos (Auto-reply, Out of office, Undeliverable, no-reply@), neutralizando bucles infinitos.
+- **Normalización y Blindaje de Datos (`Set`):** Implementación de funciones seguras en JavaScript con protección defensiva contra valores `undefined` y control de arreglos para extraer de forma limpia el `sessionId`, `cliente_email`, `cliente_nombre` y `mensaje_usuario`.
+- **Limpieza y Validación de Payload (Anti Error 400):** Nodos intermedios para validar la estructura del correo y asegurar la integridad de los datos antes de operar con APIs.
+- **Look Up en HubSpot y Resiliencia (Anti Error 409):** Búsqueda previa de contactos por correo electrónico para evitar duplicados, configurada con reintentos automáticos (`retryOnFail`, 3 intentos) para tolerar intermitencias de red y credenciales de appToken correctamente mapeadas.
+- **Create Draft en Gmail (Human-in-the-Loop):** Configuración estricta de seguridad bajo el principio de mínimo privilegio (`gmail.compose`), generando un borrador oficial para revisión humana previa al envío.
+- **Auditoría en Slack:** Envía notificaciones de estado al canal `#logs-cleanpro-agente` consumiendo directamente los datos validados del nodo de limpieza y evitando referencias a nodos vacíos.
+- **Archivo de este hito:** `CleanPro · E2E Módulo 4 con Execute Workflow Manager M3.json`
