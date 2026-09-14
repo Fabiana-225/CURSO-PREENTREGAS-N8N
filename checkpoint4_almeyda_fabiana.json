@@ -1,5 +1,5 @@
 {
-  "name": "CleanPro · E2E Módulo 4 con Execute Workflow Manager M3",
+  "name": "CleanPro · Pre entrega 4_almeyda_fabiana",
   "nodes": [
     {
       "parameters": {
@@ -11,8 +11,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -48,
-        -112
+        -416,
+        -144
       ],
       "id": "4e95ad41-2363-4009-b692-88205a59f051",
       "name": "📚 Arquitectura Modular CleanPro"
@@ -146,7 +146,7 @@
               "filtersUi": {
                 "filterValues": [
                   {
-                    "propertyName": "email",
+                    "propertyName": "email|string",
                     "value": "={{ $json.cliente_email }}"
                   }
                 ]
@@ -167,6 +167,13 @@
       ],
       "id": "f83c1e73-6e7c-4a50-83ca-6390a92aea1e",
       "name": "② Look Up · Buscar en HubSpot (Anti 409)",
+      "alwaysOutputData": true,
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "ibLs3fLSFCMnxF1f",
+          "name": "HubSpot account"
+        }
+      },
       "onError": "continueErrorOutput"
     },
     {
@@ -205,7 +212,11 @@
     {
       "parameters": {
         "authentication": "appToken",
-        "operation": "update"
+        "email": "={{ $('Set de limpieza y validacion').item.json.cliente_email }}",
+        "additionalFields": {
+          "firstName": "={{ $('Set de limpieza y validacion').item.json.cliente_nombre }}"
+        },
+        "options": {}
       },
       "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2,
@@ -229,7 +240,11 @@
     {
       "parameters": {
         "authentication": "appToken",
-        "operation": "create"
+        "email": "={{ $('Set de limpieza y validacion').item.json.cliente_email }}",
+        "additionalFields": {
+          "firstName": "={{ $('Set de limpieza y validacion').item.json.cliente_nombre }}"
+        },
+        "options": {}
       },
       "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2,
@@ -254,9 +269,9 @@
       "parameters": {
         "resource": "draft",
         "subject": "=Re: Soporte CleanPro Distribuciones S.A.",
-        "message": "={{ $('④ Set · Limpieza y Validación de Payload (M4)').item.json.respuesta_sugerida }}",
+        "message": "={{ $('Set de limpieza y validacion').item.json.respuesta_sugerida }}",
         "options": {
-          "sendTo": "={{ $('④ Set · Limpieza y Validación de Payload (M4)').item.json.cliente_email }}"
+          "sendTo": "={{ $('Set de limpieza y validacion').item.json.cliente_email }}"
         }
       },
       "type": "n8n-nodes-base.gmail",
@@ -287,7 +302,7 @@
           "value": "C0BPLKPE56V",
           "mode": "id"
         },
-        "text": "={{ '📧 *Consulta procesada* para ' + $('④ Set · Limpieza y Validación de Payload (M4)').item.json.cliente_nombre + ' (' + $('④ Set · Limpieza y Validación de Payload (M4)').item.json.cliente_email + ') — Borrador creado en Gmail y CRM actualizado vía Manager M3.' }}",
+        "text": "={{ '📧 *Consulta procesada* para ' + $('Set de limpieza y validacion').item.json.cliente_nombre + ' (' + $('Set de limpieza y validacion').item.json.cliente_email + ') — Borrador creado en Gmail y CRM actualizado vía Manager.' }}",
         "otherOptions": {}
       },
       "type": "n8n-nodes-base.slack",
@@ -296,8 +311,8 @@
       "maxTries": 2,
       "waitBetweenTries": 2000,
       "position": [
-        2320,
-        448
+        2368,
+        400
       ],
       "id": "1a80a0d1-a2e5-436e-b401-bfe82237b425",
       "name": "📣 Slack · #logs-cleanpro-agente",
@@ -333,7 +348,7 @@
             {
               "id": "f2",
               "name": "From",
-              "value": "Juan Pérez <juan.perez@example.com>",
+              "value": "josefina alvarez <prueba.totalmente.nueva.9988@example.com>",
               "type": "string"
             },
             {
@@ -415,7 +430,7 @@
             {
               "id": "566e3e83-0dc9-4afa-963e-a2285dc79082",
               "name": "cliente_email",
-              "value": "= {{ $('Set · Normalizar Email entrante1').item.json.cliente_email }}",
+              "value": "={{ $('Set · Normalizar Email entrante1').item.json.cliente_email }}",
               "type": "string"
             },
             {
@@ -426,9 +441,15 @@
             },
             {
               "id": "c446d36f-c952-46aa-ad63-5be8dcccac91",
-              "name": " respuesta_sugerida",
-              "value": "= {{ $json.output || ($json.data && $json.data.output) || 'Estimado cliente, hemos recibido su consulta en CleanPro Distribuciones S.A.' }} payload_valido: {{ (function(){ try { var e = ($('Set · Normalizar Email entrante1').item.json.cliente_email) || ''; return !!e && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e); } catch(err) { return false; } })() }}",
+              "name": "respuesta_sugerida",
+              "value": "={{ $json.output || ($json.data && $json.data.output) || 'Estimado cliente, hemos recibido su consulta en CleanPro Distribuciones S.A.' }}",
               "type": "string"
+            },
+            {
+              "id": "1fa1a5f4-e384-4d89-9051-3562e16f8256",
+              "name": "payload_valido",
+              "value": "={{ (function(){ var e = $('Set · Normalizar Email entrante1').item.json.cliente_email; return !!e && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e); })() }}",
+              "type": "boolean"
             }
           ]
         },
@@ -606,7 +627,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "a384aac3-77c4-40a0-8793-f7b17fabf709",
+  "versionId": "37b0d519-542d-4984-99c0-680cf990adc2",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "8a894ab1bcd0140b298faae458ba471b33e8cc32e3624ab66fca563750594439"
