@@ -1,21 +1,21 @@
 {
-  "name": "CleanPro · Checkpoint 4 - Integraciones Avanzadas (CRM + Gmail + Slack)",
+  "name": "CleanPro · E2E Módulo 4 con Execute Workflow Manager M3",
   "nodes": [
     {
       "parameters": {
-        "content": "## 🧩 CleanPro Distribuciones S.A. — Checkpoint 4\n\nSe extiende el Manager del Módulo 3 (memoria híbrida en Airtable) con un nuevo canal real de entrada: la casilla de soporte de CleanPro.\n\n**Los 4 nodos clave que evalúa la rúbrica:**\n① IF anti auto-reply — corta el bucle infinito\n② Look up en HubSpot — evita el Error 409 (duplicados)\n③ Create Draft en Gmail — guardrail Human-in-the-loop\n④ Set de limpieza — evita el Error 400 (payload mal formado)\n\n**Scopes mínimo privilegio:**\n- HubSpot: crm.objects.contacts.read / crm.objects.contacts.write (sin deals, sin tickets)\n- Gmail: gmail.compose (jamás gmail.send)\n- Slack: chat:write acotado al canal #logs-cleanpro-agente\n\n**Corrección M4:** el ID de canal de Slack (abierto desde M1 como placeholder C0LOGSCLEANPRO) queda resuelto: reemplazar 'SLACK_CHANNEL_ID_REAL' por el ID real que devuelve el selector nativo de n8n al autenticar el workspace de CleanPro.",
-        "height": 420,
-        "width": 620,
-        "color": 4
+        "content": "## 🚀 E2E CleanPro Módulo 4 — Arquitectura Manager-Worker\n\nEste workflow actúa como **puerta de entrada de correo (Gmail)** y **brazo ejecutor**, delegando la memoria y el razonamiento al Manager del Módulo 3 mediante el nodo `Execute Workflow`.\n\n### Flujo:\n1. **Gmail Trigger** recibe el correo de soporte.\n2. **IF Anti Auto-Reply** frena bucles automáticos con regex.\n3. **Set Normalizar** extrae email y cuerpo.\n4. **Execute Workflow** llama al Manager (M3) pasándole los datos de sesión.\n5. **④ Set Limpieza y Validación** toma la respuesta del Manager y valida el payload.\n6. **HubSpot (Look Up + Create/Update)** gestiona el CRM sin duplicados (anti Error 409).\n7. **Gmail Create Draft** genera el borrador (Human-in-the-Loop estricto).\n8. **Slack** deja el registro de auditoría.",
+        "height": 500,
+        "width": 560,
+        "color": 5
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -304,
-        -288
+        -48,
+        -112
       ],
-      "id": "b84f2185-2408-41cf-879e-955594ac12ca",
-      "name": "📚 Overview · Checkpoint 4 CleanPro"
+      "id": "4e95ad41-2363-4009-b692-88205a59f051",
+      "name": "📚 Arquitectura Modular CleanPro"
     },
     {
       "parameters": {
@@ -28,22 +28,22 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.Subject }}",
-              "rightValue": "(?i)(auto-reply|out of office|undeliverable|respuesta automática|ausente)",
+              "leftValue": "={{ ($json.Subject || '').toLowerCase() }}",
+              "rightValue": "auto-reply|out of office|undeliverable|respuesta automática|ausente|fuera de la oficina",
               "operator": {
                 "type": "string",
-                "operation": "contains"
+                "operation": "regex"
               },
-              "id": "7d134573-cb65-4b6a-9150-3430d2bc8912"
+              "id": "cond-autoreply-1"
             },
             {
-              "leftValue": "={{ $json.From }}",
-              "rightValue": "(?i)no-reply@|noreply@",
+              "leftValue": "={{ ($json.From || '').toLowerCase() }}",
+              "rightValue": "no-reply@|noreply@",
               "operator": {
                 "type": "string",
-                "operation": "contains"
+                "operation": "regex"
               },
-              "id": "bba3a69a-2189-48ae-9174-76db78fab763"
+              "id": "cond-autoreply-2"
             }
           ],
           "combinator": "or"
@@ -53,10 +53,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        176,
-        240
+        272,
+        448
       ],
-      "id": "da87a757-6052-4579-bb9c-a2054640a35a",
+      "id": "52ea4fb6-2ba2-4607-bb4a-da638d4a02a5",
       "name": "① IF · ¿Es Auto-Reply?"
     },
     {
@@ -64,76 +64,33 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        576,
-        64
+        512,
+        320
       ],
-      "id": "c658cf18-fd3d-48ff-a4e5-6b9704757d84",
-      "name": "🛑 Corta el bucle (auto-reply detectado)"
+      "id": "463f1f39-35e0-478b-905c-03fb6c96be81",
+      "name": "🛑 Corta el bucle (auto-reply)"
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "=Asunto: {{ $json.Subject }}\nDe: {{ $json.From }}\nCuerpo:{{ $json.text || $json.textPlain || $json.snippet }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "FfG1rxfwA37uoZSX",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/FfG1rxfwA37uoZSX"
+        },
         "options": {
-          "systemMessage": "Sos el agente de soporte de CleanPro Distribuciones S.A. (venta mayorista/minorista de productos de limpieza institucional, Paraná, Entre Ríos). Clasificá el correo en una de estas categorías cerradas: CONSULTA_STOCK, COTIZACION, RECLAMO, OTRO. Redactá una respuesta breve, profesional, en tono institucional (navy #1B2A4A / verde #2E7D32 como identidad de marca, no como color de texto). Si el correo pide precio o disponibilidad, indicá que un asesor comercial confirmará el detalle exacto — NUNCA inventes precios ni stock. Devolvé SIEMPRE un JSON: {\"categoria\": string, \"respuesta_sugerida\": string, \"cliente_email\": string, \"cliente_nombre\": string}",
-          "maxIterations": 4
+          "waitForSubWorkflow": true
         }
       },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.7,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
       "position": [
-        464,
-        304
+        800,
+        416
       ],
-      "id": "73dfcd95-4887-4106-8868-eecf035a6476",
-      "name": "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "name": "cliente_email",
-              "value": "={{ JSON.parse($json.output).cliente_email }}",
-              "type": "string",
-              "id": "225a22d3-8bd6-45f5-af5d-c3e930f03cea"
-            },
-            {
-              "name": "cliente_nombre",
-              "value": "={{ $json.output.cliente_nombre || 'Cliente CleanPro' }}",
-              "type": "string",
-              "id": "50be3c4d-61bd-44fa-8620-28c92d693d30"
-            },
-            {
-              "name": "categoria",
-              "value": "={{ JSON.parse($json.output).categoria }}",
-              "type": "string",
-              "id": "5064f415-9182-47c4-b351-72f6d025ac8f"
-            },
-            {
-              "name": "respuesta_sugerida",
-              "value": "={{ JSON.parse($json.output).respuesta_sugerida }}",
-              "type": "string",
-              "id": "a00674b8-3143-43eb-913a-9e2fa16d6d74"
-            },
-            {
-              "name": "payload_valido",
-              "value": "={{ !!JSON.parse($json.output).cliente_email && JSON.parse($json.output).cliente_email.includes('@') }}",
-              "type": "boolean",
-              "id": "36eb8367-41b4-4a87-97fc-35bc5f08ca53"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        784,
-        304
-      ],
-      "id": "9d6654f3-2179-4ac3-a9d1-465180bde063",
-      "name": "④ Set · Limpieza y Validación de Payload"
+      "id": "65503965-aafb-4d55-8ca0-d5439ed98193",
+      "name": "Execute Workflow · Llamar Manager M3",
+      "notes": "Delega la memoria de Airtable y el razonamiento al Manager de la Pre-entrega 3."
     },
     {
       "parameters": {
@@ -152,7 +109,7 @@
                 "type": "boolean",
                 "operation": "equals"
               },
-              "id": "a7d28839-1e1a-466b-9f9b-61bfc0ffcebd"
+              "id": "cond-payload-valido"
             }
           ],
           "combinator": "and"
@@ -162,14 +119,26 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        960,
-        304
+        1200,
+        544
       ],
-      "id": "7d87eef5-6bcb-4186-a88d-18b5f7e1d4bd",
-      "name": "IF · Payload válido (anti Error 400)"
+      "id": "41b609c1-75b4-49e3-a86f-f5cf59ca3577",
+      "name": "IF · Payload Válido (Anti Error 400)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        752
+      ],
+      "id": "6f925960-6cc8-4ae0-82b8-10b4655a631b",
+      "name": "🛑 Ruta Error / Payload Inválido"
     },
     {
       "parameters": {
+        "authentication": "appToken",
         "operation": "search",
         "filterGroupsUi": {
           "filterGroupsValues": [
@@ -189,12 +158,16 @@
       },
       "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "position": [
-        1184,
-        208
+        1424,
+        448
       ],
-      "id": "0c13a7d4-fabe-40e8-845a-f4c041180cd3",
-      "name": "② Look Up · Buscar Contacto en CRM (anti 409)"
+      "id": "f83c1e73-6e7c-4a50-83ca-6390a92aea1e",
+      "name": "② Look Up · Buscar en HubSpot (Anti 409)",
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -213,7 +186,7 @@
                 "type": "number",
                 "operation": "gt"
               },
-              "id": "5a5de633-b39a-4cf5-935e-e2eafc4bc900"
+              "id": "cond-contacto-existe"
             }
           ],
           "combinator": "and"
@@ -223,85 +196,88 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1360,
-        208
+        1648,
+        448
       ],
-      "id": "83ea9155-aea2-4cd6-99ad-2bd6c7477386",
-      "name": "IF · ¿Contacto ya existe?"
+      "id": "79c6f52d-e3ef-4955-a7b8-d5eea17794e0",
+      "name": "IF · ¿Contacto ya existe en CRM?"
     },
     {
       "parameters": {
+        "authentication": "appToken",
         "operation": "update"
       },
       "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "position": [
-        1552,
-        128
+        1872,
+        368
       ],
-      "id": "5cac4817-4ab7-400b-8bae-58eb2eceec12",
-      "name": "HubSpot · Update Contacto"
+      "id": "daf6123d-2919-43c3-96a8-0d6d70bb0344",
+      "name": "HubSpot · Update Contacto",
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "ibLs3fLSFCMnxF1f",
+          "name": "HubSpot account"
+        }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
+        "authentication": "appToken",
         "operation": "create"
       },
       "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
       "position": [
-        1568,
-        336
+        1872,
+        528
       ],
-      "id": "44039592-0f62-4e3d-9248-dfd8a215eae3",
-      "name": "HubSpot · Create Contacto (nuevo)"
+      "id": "9e010882-0690-47d9-b93b-3078318e9444",
+      "name": "HubSpot · Create Contacto (Nuevo)",
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "ibLs3fLSFCMnxF1f",
+          "name": "HubSpot account"
+        }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "resource": "draft",
-        "subject": "=Re: consulta - CleanPro Distribuciones",
-        "message": "={{ $('Set · Limpieza y Validación de Payload').item.json.respuesta_sugerida }}",
+        "subject": "=Re: Soporte CleanPro Distribuciones S.A.",
+        "message": "={{ $('④ Set · Limpieza y Validación de Payload (M4)').item.json.respuesta_sugerida }}",
         "options": {
-          "sendTo": "={{ $('Set · Limpieza y Validación de Payload').item.json.cliente_email }}"
+          "sendTo": "={{ $('④ Set · Limpieza y Validación de Payload (M4)').item.json.cliente_email }}"
         }
       },
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
       "position": [
-        1776,
-        192
+        2112,
+        448
       ],
-      "id": "2b2f6bb9-9e5b-4775-b01d-4ada5dedf511",
-      "name": "③ Create Draft · Respuesta para Aprobación (HITL)",
-      "webhookId": "d4b4fca0-3700-4862-8b24-15f684463665",
+      "id": "2d99a9dc-3465-4317-9c64-cc18ac3292ab",
+      "name": "③ Create Draft · Borrador Gmail (HITL)",
+      "webhookId": "c60b62c3-85c0-41a8-9541-b0daf2969943",
       "credentials": {
         "gmailOAuth2": {
           "id": "NdCahO98KpySuCFj",
           "name": "Gmail account"
         }
       },
-      "notes": "Guardrail HITL obligatorio: jamás se usa la operación 'send'. Un asesor comercial de CleanPro revisa y envía manualmente desde Gmail."
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "name": "resumen_slack",
-              "value": "=📧 *{{ $json.categoria }}* de {{ $json.cliente_nombre }} ({{ $json.cliente_email }}) → borrador creado en Gmail, pendiente de aprobación.",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1984,
-        192
-      ],
-      "id": "15d22d14-6a71-4a6d-ade8-b4d5da1fa66d",
-      "name": "Set · Resumen limpio para Slack (sin payload pesado)"
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -311,79 +287,161 @@
           "value": "C0BPLKPE56V",
           "mode": "id"
         },
-        "text": "={{ $json.resumen_slack }}",
+        "text": "={{ '📧 *Consulta procesada* para ' + $('④ Set · Limpieza y Validación de Payload (M4)').item.json.cliente_nombre + ' (' + $('④ Set · Limpieza y Validación de Payload (M4)').item.json.cliente_email + ') — Borrador creado en Gmail y CRM actualizado vía Manager M3.' }}",
         "otherOptions": {}
       },
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
       "position": [
-        2240,
-        192
+        2320,
+        448
       ],
-      "id": "c06ba81a-1af5-4f95-93ac-ed4dae6cb691",
-      "name": "📣 Notificación · #logs-cleanpro-agente",
-      "webhookId": "e836cd75-66ea-48c0-ae7d-37937941d6b1",
+      "id": "1a80a0d1-a2e5-436e-b401-bfe82237b425",
+      "name": "📣 Slack · #logs-cleanpro-agente",
+      "webhookId": "bcff39e2-6b5f-4448-9fc5-f4df18383160",
       "credentials": {
         "slackApi": {
           "id": "lWHg0n17MZfyc4lB",
           "name": "Slack account 5"
         }
-      },
-      "notes": "CORRECCIÓN M4: ID real del canal reemplaza el placeholder C0LOGSCLEANPRO abierto desde el Módulo 1."
-    },
-    {
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "value": "gpt-4o",
-          "mode": "list",
-          "cachedResultName": "gpt-4o"
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.3,
-      "position": [
-        432,
-        496
-      ],
-      "id": "ebd645c3-b53a-414d-b544-968ce887842e",
-      "name": "OpenAI Chat Model",
-      "credentials": {
-        "openAiApi": {
-          "id": "D04cbAT65vwNxnXw",
-          "name": "OpenAI account 2"
-        }
       }
     },
     {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        448
+      ],
+      "id": "29834b3c-c2da-43d4-ad5d-d151ee6a6391",
+      "name": "Disparo Manual (Prueba)"
+    },
+    {
       "parameters": {
-        "pollTimes": {
-          "item": [
+        "assignments": {
+          "assignments": [
             {
-              "mode": "everyMinute"
+              "id": "f1",
+              "name": "Subject",
+              "value": "Consulta de stock Lavandina Industrial 10L",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "From",
+              "value": "Juan Pérez <juan.perez@example.com>",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "text",
+              "value": "Hola, quería saber si tienen stock de Lavandina Industrial 10L para un pedido mayorista de 3 cajas.",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "textPlain",
+              "value": "Hola, quería saber si tienen stock de Lavandina Industrial 10L para un pedido mayorista de 3 cajas.",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "snippet",
+              "value": "Hola, quería saber si tienen stock de Lavandina Industrial 10L...",
+              "type": "string"
             }
           ]
         },
-        "simple": false,
-        "filters": {},
         "options": {}
       },
-      "type": "n8n-nodes-base.gmailTrigger",
-      "typeVersion": 1.4,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        -64,
-        240
+        64,
+        448
       ],
-      "id": "be4f1868-fcc9-45f1-905a-be3330cb496d",
-      "name": "Casilla Soporte Clean Pro",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "NdCahO98KpySuCFj",
-          "name": "Gmail account"
-        }
-      }
+      "id": "04d588c5-f77e-4968-a9b1-3112e8f068e2",
+      "name": "Email de Prueba (reemplaza Gmail Trigger)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "75d16a24-65fa-47b2-8556-5d5b3c370e39",
+              "name": "sessionId",
+              "type": "string",
+              "value": "={{ (function(){\n  try {\n    var raw = $json.From || $json.from || $json.sender || '';\n    var str = Array.isArray(raw) ? (raw[0] || '') : String(raw || '');\n    var parts = str.split('<');\n    var email = (parts.length > 1) ? (parts[1] || '').replace('>', '') : str;\n    return String(email || '').trim().toLowerCase() || 'sin-remitente';\n  } catch (e) { return 'sin-remitente'; }\n})() }}"
+            },
+            {
+              "id": "0dbf79fa-54e1-46e8-be16-8c7dfcf1e8f8",
+              "name": "mensaje_usuario",
+              "type": "string",
+              "value": "={{ (function(){\n  try {\n    var asunto = $json.Subject || $json.subject || '';\n    var cuerpo = $json.text || $json.textPlain || $json.snippet || '';\n    return 'Asunto: ' + asunto + ' | Mensaje: ' + cuerpo;\n  } catch (e) { return ''; }\n})() }}"
+            },
+            {
+              "id": "80b78545-f162-4600-ab47-83cd260a8a28",
+              "name": "cliente_email",
+              "type": "string",
+              "value": "={{ (function(){\n  try {\n    var raw = $json.From || $json.from || $json.sender || '';\n    var str = Array.isArray(raw) ? (raw[0] || '') : String(raw || '');\n    var parts = str.split('<');\n    var email = (parts.length > 1) ? (parts[1] || '').replace('>', '') : str;\n    return String(email || '').trim();\n  } catch (e) { return ''; }\n})() }}"
+            },
+            {
+              "id": "3f6d7697-4f6d-4729-9b47-19c17faf6454",
+              "name": "cliente_nombre",
+              "type": "string",
+              "value": "={{ (function(){\n  try {\n    var raw = $json.From || $json.from || $json.sender || '';\n    var str = Array.isArray(raw) ? (raw[0] || '') : String(raw || '');\n    var name = (str.split('<')[0] || '').trim();\n    return name || 'Cliente CleanPro';\n  } catch (e) { return 'Cliente CleanPro'; }\n})() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        544
+      ],
+      "id": "50295ff2-296d-46dc-af28-c771a183f36c",
+      "name": "Set · Normalizar Email entrante1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "566e3e83-0dc9-4afa-963e-a2285dc79082",
+              "name": "cliente_email",
+              "value": "= {{ $('Set · Normalizar Email entrante1').item.json.cliente_email }}",
+              "type": "string"
+            },
+            {
+              "id": "604ad139-c07a-4ad4-9b02-cc412d250075",
+              "name": " cliente_nombre",
+              "value": "={{ $('Set · Normalizar Email entrante1').item.json.cliente_nombre }} ",
+              "type": "string"
+            },
+            {
+              "id": "c446d36f-c952-46aa-ad63-5be8dcccac91",
+              "name": " respuesta_sugerida",
+              "value": "= {{ $json.output || ($json.data && $json.data.output) || 'Estimado cliente, hemos recibido su consulta en CleanPro Distribuciones S.A.' }} payload_valido: {{ (function(){ try { var e = ($('Set · Normalizar Email entrante1').item.json.cliente_email) || ''; return !!e && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e); } catch(err) { return false; } })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        480
+      ],
+      "id": "23b877f2-eb2e-4d88-9d53-8a2ee42c36c0",
+      "name": "Set de limpieza y validacion"
     }
   ],
   "pinData": {},
@@ -392,65 +450,61 @@
       "main": [
         [
           {
-            "node": "🛑 Corta el bucle (auto-reply detectado)",
+            "node": "🛑 Corta el bucle (auto-reply)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)",
+            "node": "Set · Normalizar Email entrante1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)": {
+    "Execute Workflow · Llamar Manager M3": {
       "main": [
         [
           {
-            "node": "④ Set · Limpieza y Validación de Payload",
+            "node": "Set de limpieza y validacion",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "④ Set · Limpieza y Validación de Payload": {
+    "IF · Payload Válido (Anti Error 400)": {
       "main": [
         [
           {
-            "node": "IF · Payload válido (anti Error 400)",
+            "node": "② Look Up · Buscar en HubSpot (Anti 409)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🛑 Ruta Error / Payload Inválido",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "IF · Payload válido (anti Error 400)": {
+    "② Look Up · Buscar en HubSpot (Anti 409)": {
       "main": [
         [
           {
-            "node": "② Look Up · Buscar Contacto en CRM (anti 409)",
+            "node": "IF · ¿Contacto ya existe en CRM?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "② Look Up · Buscar Contacto en CRM (anti 409)": {
-      "main": [
-        [
-          {
-            "node": "IF · ¿Contacto ya existe?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IF · ¿Contacto ya existe?": {
+    "IF · ¿Contacto ya existe en CRM?": {
       "main": [
         [
           {
@@ -461,7 +515,7 @@
         ],
         [
           {
-            "node": "HubSpot · Create Contacto (nuevo)",
+            "node": "HubSpot · Create Contacto (Nuevo)",
             "type": "main",
             "index": 0
           }
@@ -472,62 +526,73 @@
       "main": [
         [
           {
-            "node": "③ Create Draft · Respuesta para Aprobación (HITL)",
+            "node": "③ Create Draft · Borrador Gmail (HITL)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HubSpot · Create Contacto (nuevo)": {
+    "HubSpot · Create Contacto (Nuevo)": {
       "main": [
         [
           {
-            "node": "③ Create Draft · Respuesta para Aprobación (HITL)",
+            "node": "③ Create Draft · Borrador Gmail (HITL)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "③ Create Draft · Respuesta para Aprobación (HITL)": {
+    "③ Create Draft · Borrador Gmail (HITL)": {
       "main": [
         [
           {
-            "node": "Set · Resumen limpio para Slack (sin payload pesado)",
+            "node": "📣 Slack · #logs-cleanpro-agente",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Set · Resumen limpio para Slack (sin payload pesado)": {
+    "Disparo Manual (Prueba)": {
       "main": [
         [
           {
-            "node": "📣 Notificación · #logs-cleanpro-agente",
+            "node": "Email de Prueba (reemplaza Gmail Trigger)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenAI Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "🧠 AI Agent · Clasifica y Redacta (Claude 3.5 Sonnet)",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Casilla Soporte Clean Pro": {
+    "Email de Prueba (reemplaza Gmail Trigger)": {
       "main": [
         [
           {
             "node": "① IF · ¿Es Auto-Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set · Normalizar Email entrante1": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow · Llamar Manager M3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set de limpieza y validacion": {
+      "main": [
+        [
+          {
+            "node": "IF · Payload Válido (Anti Error 400)",
             "type": "main",
             "index": 0
           }
@@ -541,11 +606,12 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "98022a4a-00f0-48b9-bfc7-79625e2d16b4",
+  "versionId": "a384aac3-77c4-40a0-8793-f7b17fabf709",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "8a894ab1bcd0140b298faae458ba471b33e8cc32e3624ab66fca563750594439"
   },
   "nodeGroups": [],
-  "id": "DFRMV6ehTYF0bZa9",
+  "id": "sWRVBm0sAU3b0u0a",
   "tags": []
 }
